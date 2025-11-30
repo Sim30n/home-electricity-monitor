@@ -97,15 +97,15 @@ void loop() {
       const int red_led = doc["red_led"];
       const int yellow_led = doc["yellow_led"];
       const float power = doc["power"];
-      const float power_price = doc["kwh_price"];
+      const float power_price = doc["power_price"];
       //LCD
       lcd.setCursor(0,0);
       lcd.print("Hinta nyt:  ");
       lcd.print(current_price);
       lcd.setCursor(0,1);
-      lcd.print("kW: ");
+      lcd.print("kW:");
       lcd.print(power);
-      lcd.print("EH: ");
+      lcd.print(" EH:");
       lcd.print(power_price);
       digitalWrite(3, green_led);
       digitalWrite(4, yellow_led);
