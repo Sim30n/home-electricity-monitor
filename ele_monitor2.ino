@@ -105,6 +105,8 @@ void loop() {
       lcd.setCursor(0,1);
       lcd.print("kW: ");
       lcd.print(power);
+      lcd.print("E/H: ");
+      lcd.print(power_price);
       digitalWrite(3, green_led);
       digitalWrite(4, yellow_led);
       digitalWrite(5, red_led);
