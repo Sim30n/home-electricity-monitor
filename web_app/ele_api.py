@@ -129,7 +129,7 @@ def api_endpoint():
         "yellow_led": y_led,
         "red_led": r_led,
         "power": round(latest_power_data[1], 2),
-        "power_price": round(current_kw_price, 2),
+        "power_price": round(current_kw_price/100, 2),
     }
 
     #ele_price = ElePrice()
