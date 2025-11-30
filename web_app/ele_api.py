@@ -118,8 +118,8 @@ def api_endpoint():
         y_led = 0
         r_led = 1
     
-    latest_power_data = energy_log_reader.get_latest_data()[1]
-    current_kw_price = price_to_send * latest_power_data
+    latest_power_data = energy_log_reader.get_latest_data()
+    current_kw_price = price_to_send * latest_power_data[1]
     
 
     response = {
@@ -128,7 +128,7 @@ def api_endpoint():
         "green_led": g_led,
         "yellow_led": y_led,
         "red_led": r_led,
-        "power": latest_power_data,
+        "power": latest_power_data[1],
         "power_price": current_kw_price
     }
 
