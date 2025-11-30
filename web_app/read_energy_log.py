@@ -7,7 +7,7 @@ class EnergyLogReader:
         Defaults to pulse_sensor\energy_log.txt in the project directory.
         """
         if filepath is None:
-            filepath = r"..\pulse_sensor\energy_log.txt"
+            filepath = r"../pulse_sensor/energy_log.txt"
         self.filepath = filepath
     
     def get_latest_data(self):
