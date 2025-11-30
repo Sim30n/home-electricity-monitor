@@ -1,7 +1,8 @@
 from flask import Flask, jsonify
 from ensto_e import ElePrice
-import ast
+from read_energy_log import EnergyLogReader
 from datetime import datetime
+import ast
 import os
 
 example_response = {
@@ -63,6 +64,8 @@ example2 = {
     "red_led": 0
 }
 
+energy_log_reader = EnergyLogReader()
+
 # Initialize the Flask application
 app = Flask(__name__)
 
@@ -88,7 +91,7 @@ def api_endpoint():
         # Get the current datetime in the same timezone
         current_datetime = datetime.now(target_datetime.tzinfo)
 
-        # Check if the current datetime is in the same hour as the target datetime
+        # Check if the current datetime is in the same 15min as the target datetime
         is_same_hour = (
             current_datetime.year == target_datetime.year and
             current_datetime.month == target_datetime.month and
@@ -102,7 +105,6 @@ def api_endpoint():
             break
             #print(key, value)
 
-
     if price_to_send < 2:
         g_led = 1
         y_led = 0
@@ -115,16 +117,20 @@ def api_endpoint():
         g_led = 0
         y_led = 0
         r_led = 1
+    
+    latest_power_data = energy_log_reader.get_latest_data()[1]
+    current_kw_price = price_to_send * latest_power_data
+    
 
     response = {
         "current_time": target_datetime_str,
         "current_price": price_to_send,
         "green_led": g_led,
         "yellow_led": y_led,
-        "red_led": r_led
+        "red_led": r_led,
+        "power": latest_power_data,
+        "power_price": current_kw_price
     }
-
-
 
     #ele_price = ElePrice()
     #price_data = ele_price.get_price_info()

@@ -1,5 +1,4 @@
-datetime;LDR;Pulses/min/Power(kW)
-
+datetime;LDR;Pulses/min;Power(kW)
 2025-11-30 13:53:05;4;17;1.020
 2025-11-30 13:54:05;30;16;0.960
 2025-11-30 13:55:05;7;14;0.840
