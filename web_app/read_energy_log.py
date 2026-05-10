@@ -34,16 +34,19 @@ class EnergyLogReader:
                 lines = file.readlines()
                 if len(lines) <= 1:
                     return []
-                
+
                 data = []
                 for line in lines[1:]:  # Skip header
                     parts = line.strip().split(';')
-                    data.append({
+                    entry = {
                         'datetime': parts[0],
                         'ldr': int(parts[1]),
                         'pulses_per_min': int(parts[2]),
-                        'power_kw': float(parts[3])
-                    })
+                        'power_kw': float(parts[3]),
+                    }
+                    if len(parts) > 4:
+                        entry['instant_power_kw'] = float(parts[4])
+                    data.append(entry)
                 return data
         except Exception as e:
             print(f"Error reading log file: {e}")
