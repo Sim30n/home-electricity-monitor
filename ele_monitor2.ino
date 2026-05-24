@@ -115,7 +115,7 @@ void loop() {
       lcd.print("HTTP error ");
       lcd.print(statusCode);
     }
-    interval = interval + 60000;
+    interval = interval + 10000;
   }
 }
 
