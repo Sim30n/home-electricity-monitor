@@ -11,16 +11,17 @@ class EnergyLogReader:
         self.filepath = filepath
     
     def get_latest_data(self):
-        """Reads the last line and returns the datetime and power in kW."""
+        """Reads the last line and returns (datetime, avg_kw, instant_kw)."""
         try:
             with open(self.filepath, 'r') as file:
                 lines = file.readlines()
                 if len(lines) > 1:  # Skip header line
                     last_line = lines[-1].strip()
                     columns = last_line.split(';')
-                    power_kw = float(columns[3])  # Power is in the 4th column
-                    datetime_str = columns[0]  # Datetime is in the 1st column
-                    return datetime_str, power_kw
+                    datetime_str = columns[0]
+                    avg_kw = float(columns[3])
+                    instant_kw = float(columns[4]) if len(columns) > 4 else 0.0
+                    return datetime_str, avg_kw, instant_kw
                 else:
                     return None
         except (FileNotFoundError, IndexError, ValueError) as e:
@@ -56,6 +57,6 @@ if __name__ == "__main__":
     reader = EnergyLogReader()
     latest_data = reader.get_latest_data()
     if latest_data:
-        print(f"Latest Data - Datetime: {latest_data[0]}, Power (kW): {latest_data[1]}")
+        print(f"Latest Data - Datetime: {latest_data[0]}, Avg (kW): {latest_data[1]}, Instant (kW): {latest_data[2]}")
     else:
         print("No data available.")

@@ -126,7 +126,7 @@ def api_endpoint():
         "green_led": g_led,
         "yellow_led": y_led,
         "red_led": r_led,
-        "power": round(latest_power_data[1], 2),
+        "power": round(latest_power_data[2], 2),
         "avg_power": round(latest_power_data[1], 2),
     }
 
