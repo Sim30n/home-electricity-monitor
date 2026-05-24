@@ -64,7 +64,7 @@ void setup() {
 
   // you're connected now, so print out the status:
   printWifiStatus();
-  interval = 60000;
+  interval = 10000;
   startMillis = millis();
 }
 

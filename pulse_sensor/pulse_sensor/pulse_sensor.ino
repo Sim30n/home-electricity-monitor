@@ -20,7 +20,7 @@ unsigned long lastPulseTime = 0;
 float instantPowerKw = 0.0;
 
 unsigned long lastCalcTime = 0;
-const unsigned long calcInterval = 60000;
+const unsigned long calcInterval = 10000;
 
 void setup() {
   Serial.begin(9600);
