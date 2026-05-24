@@ -29,6 +29,7 @@ After=local-fs.target
 [Service]
 User=pi
 WorkingDirectory=$WORK_DIR
+Environment=PYTHONUNBUFFERED=1
 ExecStart=$PYTHON_EXE $APP_PATH
 Restart=always
 RestartSec=5
