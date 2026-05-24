@@ -2,8 +2,9 @@ const int sensorPin = A0;
 const int pulsesPerKWh = 1000;
 
 // Hysteresis: separate thresholds prevent false re-triggering near the boundary
-const int thresholdHigh = 750;  // rising edge: LED turns on
-const int thresholdLow  = 650;  // falling edge: LED turns off
+// Scaled for XIAO's 12-bit ADC (0-4095 range)
+const int thresholdHigh = 3000;  // rising edge: LED turns on
+const int thresholdLow  = 2600;  // falling edge: LED turns off
 
 // Minimum pulse duration (ms) — filters out sub-5ms noise spikes
 const unsigned long minPulseMs = 5;
@@ -22,7 +23,6 @@ unsigned long lastCalcTime = 0;
 const unsigned long calcInterval = 60000;
 
 void setup() {
-  analogReadResolution(10);  // XIAO has 12-bit ADC; keep 10-bit range so thresholds stay valid
   Serial.begin(9600);
   lastCalcTime = millis();
 }

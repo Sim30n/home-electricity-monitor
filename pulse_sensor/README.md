@@ -104,6 +104,8 @@ datetime;LDR;pulses/min;avg_kW;instant_kW
 
 ## Adjusting the LDR threshold
 
+The XIAO uses a 12-bit ADC (0–4095). Default thresholds are 3000 (high) and 2600 (low).
+
 If pulses are not detected reliably, adjust `thresholdHigh` and `thresholdLow`
 in `pulse_sensor.ino`. Monitor the raw LDR value in the serial output:
 - Ambient (no flash): note the baseline value
