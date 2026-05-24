@@ -35,6 +35,10 @@ done
 [ -z "$PULSE_PORT" ] && err "No USB serial port found. Check XIAO is connected."
 green "Found pulse sensor on $PULSE_PORT"
 
+info "Stopping $READ_ENERGY_SERVICE to release serial port..."
+sudo systemctl stop "$READ_ENERGY_SERVICE" || err "Failed to stop $READ_ENERGY_SERVICE"
+green "$READ_ENERGY_SERVICE stopped"
+
 info "Uploading pulse sensor via USB ($PULSE_PORT)..."
 arduino-cli upload -p "$PULSE_PORT" --fqbn "$PULSE_FQBN" "$PULSE_SKETCH" || err "Pulse sensor upload failed"
 green "Pulse sensor uploaded"
