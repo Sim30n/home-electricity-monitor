@@ -33,9 +33,23 @@ arduino-cli compile --fqbn "$ELE_FQBN" "$ELE_SKETCH" || err "ele_monitor2 compil
 green "ele_monitor2 compiled"
 
 info "Uploading ele_monitor2 via WiFi OTA ($ELE_IP)..."
-arduino-cli upload -p "$ELE_IP" --fqbn "$ELE_FQBN" \
-  --upload-field password="$ELE_OTA_PASSWORD" \
-  "$ELE_SKETCH" || err "ele_monitor2 upload failed"
+if arduino-cli upload --help 2>&1 | grep -q -- "--upload-field"; then
+  # arduino-cli >= 0.35: pass password directly
+  arduino-cli upload -p "$ELE_IP" --fqbn "$ELE_FQBN" \
+    --upload-field password="$ELE_OTA_PASSWORD" \
+    "$ELE_SKETCH" || err "ele_monitor2 upload failed"
+elif command -v expect &> /dev/null; then
+  # Older arduino-cli: automate the interactive password prompt
+  expect << EXPECT_SCRIPT || err "ele_monitor2 upload failed"
+    set timeout 60
+    spawn arduino-cli upload -p "$ELE_IP" --fqbn "$ELE_FQBN" "$ELE_SKETCH"
+    expect -nocase "password"
+    send "$ELE_OTA_PASSWORD\r"
+    expect eof
+EXPECT_SCRIPT
+else
+  err "arduino-cli < 0.35 and 'expect' is not installed. Either update arduino-cli (recommended) or: sudo apt install expect"
+fi
 green "ele_monitor2 uploaded"
 
 # ── 3. Web app service ────────────────────────────────────────────────────────
