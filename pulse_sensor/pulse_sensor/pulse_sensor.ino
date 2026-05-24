@@ -2,9 +2,10 @@ const int sensorPin = A0;
 const int pulsesPerKWh = 1000;
 
 // Hysteresis: separate thresholds prevent false re-triggering near the boundary
-// Scaled for XIAO's 12-bit ADC (0-4095 range)
-const int thresholdHigh = 3000;  // rising edge: LED turns on
-const int thresholdLow  = 2600;  // falling edge: LED turns off
+// Tune these after checking the peakLdr value in the serial output:
+//   set thresholdHigh ~80% of the peak, thresholdLow ~60% of the peak
+const int thresholdHigh = 200;  // rising edge: LED turns on
+const int thresholdLow  = 100;  // falling edge: LED turns off
 
 // Minimum pulse duration (ms) — filters out sub-5ms noise spikes
 const unsigned long minPulseMs = 5;
@@ -19,6 +20,8 @@ unsigned long pulseCount = 0;
 unsigned long lastPulseTime = 0;
 float instantPowerKw = 0.0;
 
+int peakLdr = 0;  // highest LDR reading seen in the current window
+
 unsigned long lastCalcTime = 0;
 const unsigned long calcInterval = 10000;
 
@@ -30,6 +33,8 @@ void setup() {
 void loop() {
   int val = analogRead(sensorPin);
   unsigned long now = millis();
+
+  if (val > peakLdr) peakLdr = val;
 
   if (!lightOn && val > thresholdHigh) {
     // Rising edge detected
@@ -57,17 +62,19 @@ void loop() {
     unsigned long pulses = pulseCount;
     pulseCount = 0;
 
+    int peak = peakLdr;
+    peakLdr = 0;
+
     float avgPowerKw;
     if (pulses == 0 || (lastPulseTime > 0 && (now - lastPulseTime) > noPulseTimeoutMs)) {
       avgPowerKw = 0.0;
       instantPowerKw = 0.0;
     } else {
-      // Use actual elapsed time rather than assuming exactly 60 000 ms
       float pulsesPerHour = pulses * (3600000.0 / (float)elapsed);
       avgPowerKw = pulsesPerHour / pulsesPerKWh;
     }
 
-    Serial.print(val);
+    Serial.print(peak);
     Serial.print(";");
     Serial.print(pulses);
     Serial.print(";");
