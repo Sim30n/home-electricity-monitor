@@ -3,9 +3,9 @@ const int pulsesPerKWh = 1000;
 
 // Hysteresis: separate thresholds prevent false re-triggering near the boundary
 // Tune these after checking the peakLdr value in the serial output:
-//   set thresholdHigh ~80% of the peak, thresholdLow ~60% of the peak
-const int thresholdHigh = 200;  // rising edge: LED turns on
-const int thresholdLow  = 100;  // falling edge: LED turns off
+// Tuned for observed values: flash peak ~980, ambient ~90
+const int thresholdHigh = 500;  // rising edge: LED turns on
+const int thresholdLow  = 200;  // falling edge: LED turns off
 
 // Minimum pulse duration (ms) — filters out sub-5ms noise spikes
 const unsigned long minPulseMs = 5;
@@ -74,8 +74,8 @@ void loop() {
       avgPowerKw = pulsesPerHour / pulsesPerKWh;
     }
 
-    Serial.print(peak);
-    Serial.print(";");
+    //Serial.print(peak);
+    //Serial.print(";");
     Serial.print(pulses);
     Serial.print(";");
     Serial.print(avgPowerKw, 3);
