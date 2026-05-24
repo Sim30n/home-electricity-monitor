@@ -4,7 +4,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PULSE_FQBN="Seeeduino:samd:seeed_XIAO_m0"
-PULSE_PORT="/dev/ttyACM0"
 PULSE_SKETCH="$SCRIPT_DIR/pulse_sensor/pulse_sensor"
 
 ELE_FQBN="arduino:samd:mkrwifi1010"
@@ -22,6 +21,18 @@ err()   { echo -e "\033[0;31m[✗]\033[0m $*" >&2; exit 1; }
 info "Compiling pulse sensor..."
 arduino-cli compile --fqbn "$PULSE_FQBN" "$PULSE_SKETCH" || err "Pulse sensor compile failed"
 green "Pulse sensor compiled"
+
+info "Detecting pulse sensor port..."
+PULSE_PORT=""
+for i in 1 2 3 4 5; do
+  PULSE_PORT=$(arduino-cli board list 2>/dev/null | grep -i "seeed\|xiao\|samd" | awk '{print $1}' | head -1)
+  [ -z "$PULSE_PORT" ] && PULSE_PORT=$(ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null | head -1)
+  [ -n "$PULSE_PORT" ] && break
+  info "Port not found, retrying in 2s... ($i/5)"
+  sleep 2
+done
+[ -z "$PULSE_PORT" ] && err "No USB serial port found. Check XIAO is connected."
+green "Found pulse sensor on $PULSE_PORT"
 
 info "Uploading pulse sensor via USB ($PULSE_PORT)..."
 arduino-cli upload -p "$PULSE_PORT" --fqbn "$PULSE_FQBN" "$PULSE_SKETCH" || err "Pulse sensor upload failed"
