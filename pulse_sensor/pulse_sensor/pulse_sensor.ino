@@ -74,8 +74,8 @@ void loop() {
       avgPowerKw = pulsesPerHour / pulsesPerKWh;
     }
 
-    //Serial.print(peak);
-    //Serial.print(";");
+    Serial.print(peak);
+    Serial.print(";");
     Serial.print(pulses);
     Serial.print(";");
     Serial.print(avgPowerKw, 3);
