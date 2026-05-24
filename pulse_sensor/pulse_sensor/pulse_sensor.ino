@@ -22,6 +22,7 @@ unsigned long lastCalcTime = 0;
 const unsigned long calcInterval = 60000;
 
 void setup() {
+  analogReadResolution(10);  // XIAO has 12-bit ADC; keep 10-bit range so thresholds stay valid
   Serial.begin(9600);
   lastCalcTime = millis();
 }
