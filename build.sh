@@ -12,6 +12,7 @@ ELE_OTA_PASSWORD="password"
 ELE_SKETCH="$SCRIPT_DIR"
 
 SERVICE_NAME="ele_monitor2"
+READ_ENERGY_SERVICE="read_energy"
 
 green() { echo -e "\033[0;32m[✓]\033[0m $*"; }
 info()  { echo -e "\033[0;34m[…]\033[0m $*"; }
@@ -37,6 +38,10 @@ green "Found pulse sensor on $PULSE_PORT"
 info "Uploading pulse sensor via USB ($PULSE_PORT)..."
 arduino-cli upload -p "$PULSE_PORT" --fqbn "$PULSE_FQBN" "$PULSE_SKETCH" || err "Pulse sensor upload failed"
 green "Pulse sensor uploaded"
+
+info "Restarting $READ_ENERGY_SERVICE service..."
+sudo systemctl restart "$READ_ENERGY_SERVICE" || err "Failed to restart $READ_ENERGY_SERVICE"
+green "$READ_ENERGY_SERVICE restarted"
 
 # ── 2. ele_monitor2 (MKR WiFi 1010 via OTA) ──────────────────────────────────
 info "Compiling ele_monitor2..."
