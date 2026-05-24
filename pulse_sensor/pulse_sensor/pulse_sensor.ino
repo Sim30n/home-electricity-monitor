@@ -19,8 +19,6 @@ unsigned long pulseCount = 0;
 unsigned long lastPulseTime = 0;
 float instantPowerKw = 0.0;
 
-int peakLdr = 0;  // highest LDR reading seen in the current window
-
 unsigned long lastCalcTime = 0;
 const unsigned long calcInterval = 10000;
 
@@ -32,8 +30,6 @@ void setup() {
 void loop() {
   int val = analogRead(sensorPin);
   unsigned long now = millis();
-
-  if (val > peakLdr) peakLdr = val;
 
   if (!lightOn && val > thresholdHigh) {
     // Rising edge detected
@@ -61,9 +57,6 @@ void loop() {
     unsigned long pulses = pulseCount;
     pulseCount = 0;
 
-    int peak = peakLdr;
-    peakLdr = 0;
-
     float avgPowerKw;
     if (pulses == 0 || (lastPulseTime > 0 && (now - lastPulseTime) > noPulseTimeoutMs)) {
       avgPowerKw = 0.0;
@@ -73,7 +66,7 @@ void loop() {
       avgPowerKw = pulsesPerHour / pulsesPerKWh;
     }
 
-    Serial.print(peak);
+    Serial.print(val);
     Serial.print(";");
     Serial.print(pulses);
     Serial.print(";");
