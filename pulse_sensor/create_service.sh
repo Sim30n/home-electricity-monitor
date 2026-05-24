@@ -2,7 +2,7 @@
 
 SERVICE_NAME="read_energy"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME.service"
-WORK_DIR="/home/pi/projects/ele_monitor/pulse_sensor"
+WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_EXE="/usr/bin/python3"
 APP_PATH="$WORK_DIR/read_energy.py"
 
