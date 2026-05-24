@@ -119,8 +119,6 @@ def api_endpoint():
         r_led = 1
     
     latest_power_data = energy_log_reader.get_latest_data()
-    current_kw_price = price_to_send * latest_power_data[1]
-    
 
     response = {
         "current_time": target_datetime_str,
@@ -129,7 +127,7 @@ def api_endpoint():
         "yellow_led": y_led,
         "red_led": r_led,
         "power": round(latest_power_data[1], 2),
-        "power_price": round(current_kw_price/100, 2),
+        "avg_power": round(latest_power_data[1], 2),
     }
 
     #ele_price = ElePrice()
