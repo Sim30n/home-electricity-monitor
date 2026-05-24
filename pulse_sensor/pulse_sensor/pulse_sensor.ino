@@ -2,6 +2,7 @@ const int sensorPin = A0;
 const int pulsesPerKWh = 1000;
 
 // Hysteresis: separate thresholds prevent false re-triggering near the boundary
+// Tune these after checking the peakLdr value in the serial output:
 // Tuned for observed values: flash peak ~980, ambient ~90
 const int thresholdHigh = 500;  // rising edge: LED turns on
 const int thresholdLow  = 200;  // falling edge: LED turns off
