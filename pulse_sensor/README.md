@@ -74,8 +74,8 @@ The sketch emits one line per minute over serial (9600 baud):
 | Field | Description |
 |---|---|
 | LDR | Raw analog reading (0–1023) at report time |
-| pulses/min | Pulse count in the last minute |
-| avg_kW | Average power calculated from pulses/min |
+| pulses/10s | Pulse count in the last 10 seconds |
+| avg_kW | Average power calculated from pulses in the last 10 seconds |
 | instant_kW | Instantaneous power from last inter-pulse interval |
 
 Example:
