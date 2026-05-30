@@ -46,16 +46,23 @@ void setup() {
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
-    // don't continue:
+    lcd.setCursor(0, 1);
+    lcd.print("Ei WiFi-moduulia");
     while (true);
   }
 
   // attempt to connect to Wifi network:
-  while ( status != WL_CONNECTED) {
+  int wifiRetry = 0;
+  while (status != WL_CONNECTED) {
+    wifiRetry++;
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    lcd.setCursor(0, 1);
+    lcd.print("WiFi yritys ");
+    lcd.print(wifiRetry);
+    lcd.print("   ");
     status = WiFi.begin(ssid, pass);
+    delay(5000);
   }
 
   // start the WiFi OTA library with internal (flash) based storage
