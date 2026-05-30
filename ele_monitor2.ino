@@ -25,6 +25,23 @@ WiFiClient wifi_client;
 HttpClient http_client = HttpClient(wifi_client, server, port);
 LiquidCrystal_I2C lcd(0x3F, 16, 2);
 
+void connectWifi() {
+  status = WL_IDLE_STATUS;
+  int wifiRetry = 0;
+  while (status != WL_CONNECTED) {
+    wifiRetry++;
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+    lcd.setCursor(0, 1);
+    lcd.print("WiFi yritys ");
+    lcd.print(wifiRetry);
+    lcd.print("   ");
+    status = WiFi.begin(ssid, pass);
+    delay(5000);
+  }
+  Serial.println("WiFi connected");
+}
+
 void setup() {
   pinMode(3, OUTPUT);
   pinMode(4, OUTPUT);
@@ -51,23 +68,10 @@ void setup() {
     while (true);
   }
 
-  // attempt to connect to Wifi network:
-  int wifiRetry = 0;
-  while (status != WL_CONNECTED) {
-    wifiRetry++;
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
-    lcd.setCursor(0, 1);
-    lcd.print("WiFi yritys ");
-    lcd.print(wifiRetry);
-    lcd.print("   ");
-    status = WiFi.begin(ssid, pass);
-    delay(5000);
-  }
+  connectWifi();
 
   // start the WiFi OTA library with internal (flash) based storage
   ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
-
 
   // you're connected now, so print out the status:
   printWifiStatus();
@@ -87,17 +91,13 @@ void loop() {
     int statusCode = http_client.responseStatusCode();
     if (statusCode == 200) {
       String response = http_client.responseBody();
-      //Serial.println(statusCode);
-      //Serial.println(response);
       // Parse the JSON payload
-      DynamicJsonDocument doc(1024);  // Create a JSON document (ensure enough space)
+      DynamicJsonDocument doc(1024);
       DeserializationError error = deserializeJson(doc, response);
-      // Check for parsing errors
       if (error) {
         Serial.print("Failed to parse JSON: ");
         Serial.println(error.f_str());
       }
-      // Access data in the JSON (example: assuming a "title" field in the JSON)
       const char* current_time = doc["current_time"];
       const float current_price = doc["current_price"];
       const int green_led = doc["green_led"];
@@ -121,6 +121,17 @@ void loop() {
       lcd.setCursor(0,0);
       lcd.print("HTTP error ");
       lcd.print(statusCode);
+      lcd.print("   ");
+      Serial.print("HTTP error: ");
+      Serial.println(statusCode);
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi lost, reconnecting...");
+        http_client.stop();
+        lcd.setCursor(0, 0);
+        lcd.print("WiFi katkennut  ");
+        connectWifi();
+        ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
+      }
     }
     interval = interval + 10000;
   }
