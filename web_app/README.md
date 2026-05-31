@@ -61,7 +61,7 @@ journalctl -u ele_monitor2 -f
   "green_led":     1,
   "yellow_led":    0,
   "red_led":       0,
-  "power":         0.19,
+  "power":         0.19,  // retained in API response but not shown on LCD
   "avg_power":     0.36,
   "daily_cost":    0.42
 }
