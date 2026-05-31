@@ -1,3 +1,5 @@
+from datetime import datetime
+
 class EnergyLogReader:
     """Class for reading and parsing energy log data."""
     
@@ -28,6 +30,30 @@ class EnergyLogReader:
             print(f"Error reading data: {e}")
             return None
     
+    def get_today_data(self):
+        """Returns today's log entries (since midnight) by reading from end of file."""
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        entries = []
+        try:
+            with open(self.filepath, 'rb') as f:
+                f.seek(0, 2)
+                file_size = f.tell()
+                read_size = min(500 * 1024, file_size)
+                f.seek(-read_size, 2)
+                chunk = f.read().decode('utf-8', errors='replace')
+                for line in chunk.split('\n'):
+                    stripped = line.strip()
+                    if stripped.startswith(today_str):
+                        parts = stripped.split(';')
+                        if len(parts) >= 4:
+                            try:
+                                entries.append({'datetime': parts[0], 'power_kw': float(parts[3])})
+                            except (ValueError, IndexError):
+                                pass
+        except Exception as e:
+            print(f"Error reading today's data: {e}")
+        return entries
+
     def get_all_data(self):
         """Returns list of dictionaries with all log entries."""
         try:
