@@ -66,6 +66,10 @@ example2 = {
 
 energy_log_reader = EnergyLogReader()
 
+# Price adjustment: markup (c/kWh) added to spot price, then VAT multiplied on top
+PRICE_MARKUP_CENTS = 0.59
+PRICE_TAX_RATE = 0.24  # 24 % VAT
+
 # Initialize the Flask application
 app = Flask(__name__)
 
@@ -101,7 +105,7 @@ def api_endpoint():
         )
         price_to_send = 999
         if is_same_hour:
-            price_to_send = value
+            price_to_send = (value + PRICE_MARKUP_CENTS) * (1 + PRICE_TAX_RATE)
             break
             #print(key, value)
 
