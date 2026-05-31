@@ -103,17 +103,19 @@ void loop() {
       const int green_led = doc["green_led"];
       const int red_led = doc["red_led"];
       const int yellow_led = doc["yellow_led"];
-      const float power = doc["power"];
       const float avg_power = doc["avg_power"];
+      const float daily_cost = doc["daily_cost"];
       //LCD
       lcd.setCursor(0,0);
       lcd.print("Hinta nyt:  ");
       lcd.print(current_price);
-      lcd.setCursor(0,1);
-      lcd.print("kW:");
-      lcd.print(power);
-      lcd.print(" Avg:");
-      lcd.print(avg_power);
+      char line2[17];
+      snprintf(line2, sizeof(line2), "Avg:%.2f P:%.2fe", avg_power, daily_cost);
+      int len = strlen(line2);
+      while (len < 16) line2[len++] = ' ';
+      line2[16] = '\0';
+      lcd.setCursor(0, 1);
+      lcd.print(line2);
       digitalWrite(3, green_led);
       digitalWrite(4, yellow_led);
       digitalWrite(5, red_led);

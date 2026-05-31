@@ -61,19 +61,21 @@ journalctl -u ele_monitor2 -f
   "green_led":     1,
   "yellow_led":    0,
   "red_led":       0,
-  "power":         0.19,
-  "avg_power":     0.36
+  "power":         0.19,  // retained in API response but not shown on LCD
+  "avg_power":     0.36,
+  "daily_cost":    0.42
 }
 ```
 
 | Field | Description |
 |---|---|
-| `current_price` | Spot price in cents/kWh |
+| `current_price` | Spot price in cents/kWh (markup + VAT included) |
 | `green_led` | 1 when price < 2 c/kWh |
 | `yellow_led` | 1 when 2 ≤ price < 10 c/kWh |
 | `red_led` | 1 when price ≥ 10 c/kWh |
-| `power` | Instantaneous power in kW |
+| `power` | Instantaneous power in kW (not shown on LCD) |
 | `avg_power` | 10-second average power in kW |
+| `daily_cost` | Accumulated electricity cost in euros since midnight today |
 
 ## Price data — daily cron job
 

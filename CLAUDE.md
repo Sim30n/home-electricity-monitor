@@ -69,11 +69,11 @@ journalctl -u ele_monitor2 -f   # Flask web app
 
 **`pulse_sensor/read_energy.py`** — Python systemd service. Reads the XIAO serial output and appends timestamped lines to `pulse_sensor/energy_log.txt`. Format: `YYYY-MM-DD HH:MM:SS;peakLDR;pulses;avgPower;instantPower`.
 
-**`ele_monitor2.ino`** — runs on MKR WiFi 1010. Polls `GET /api` over WiFi every 10 seconds and renders the response on a 16×2 LCD. Drives LEDs on GPIO 3/4/5 for price tier (green/yellow/red). Supports ArduinoOTA for wireless firmware updates.
+**`ele_monitor2.ino`** — runs on MKR WiFi 1010. Polls `GET /api` over WiFi every 10 seconds and renders the response on a 16×2 LCD. LCD row 0: current price ("Hinta nyt: X.XX"). LCD row 1: 10-second average power and accumulated daily cost in euros ("Avg:X.XX P:X.XXe"). Drives LEDs on GPIO 3/4/5 for price tier (green/yellow/red). Supports ArduinoOTA for wireless firmware updates.
 
 ### Flask API (`web_app/`)
 
-`ele_api.py` serves `GET /api`. It reads price data from `price_info.py` (a Python dict literal, not JSON — loaded with `ast.literal_eval`), matches the current 15-minute window to find the active spot price, then reads the most recent entry from `energy_log.txt` via `read_energy_log.py`.
+`ele_api.py` serves `GET /api`. It reads price data from `price_info.py` (a Python dict literal, not JSON — loaded with `ast.literal_eval`), matches the current 15-minute window to find the active spot price, reads the most recent entry from `energy_log.txt` via `read_energy_log.py`, and calculates the accumulated electricity cost in euros since midnight from today's log entries and hourly prices. Response fields: `current_time`, `current_price`, `green_led`, `yellow_led`, `red_led`, `power`, `avg_power`, `daily_cost`.
 
 `price_info.py` is regenerated daily by a cron job running `ensto_e.py`, which fetches the next 24 hours of prices from the ENTSO-E Transparency Platform API. The file is a raw Python dict literal written to disk — this is intentional and replaces a database.
 

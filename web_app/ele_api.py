@@ -64,11 +64,35 @@ example2 = {
     "red_led": 0
 }
 
-energy_log_reader = EnergyLogReader()
-
 # Price adjustment: markup (c/kWh) added to spot price, then VAT multiplied on top
 PRICE_MARKUP_CENTS = 0.59
 PRICE_TAX_RATE = 0.24  # 24 % VAT
+
+energy_log_reader = EnergyLogReader()
+
+
+def calculate_daily_cost(price_dict):
+    """Return accumulated electricity cost in euros since midnight today."""
+    today_entries = energy_log_reader.get_today_data()
+    if not today_entries:
+        return 0.0
+
+    total_cost_cents = 0.0
+    interval_hours = 10.0 / 3600.0
+
+    for entry in today_entries:
+        entry_dt = datetime.strptime(entry['datetime'], "%Y-%m-%d %H:%M:%S")
+        for price_key, price_val in price_dict.items():
+            slot_dt = datetime.fromisoformat(price_key)
+            if (entry_dt.year == slot_dt.year and
+                    entry_dt.month == slot_dt.month and
+                    entry_dt.day == slot_dt.day and
+                    entry_dt.hour == slot_dt.hour):
+                price_with_markup = (price_val + PRICE_MARKUP_CENTS) * (1 + PRICE_TAX_RATE)
+                total_cost_cents += entry['power_kw'] * interval_hours * price_with_markup
+                break
+
+    return round(total_cost_cents / 100.0, 2)
 
 # Initialize the Flask application
 app = Flask(__name__)
@@ -132,6 +156,7 @@ def api_endpoint():
         "red_led": r_led,
         "power": round(latest_power_data[2], 2),
         "avg_power": round(latest_power_data[1], 2),
+        "daily_cost": calculate_daily_cost(price_dict),
     }
 
     #ele_price = ElePrice()

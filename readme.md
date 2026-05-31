@@ -1,8 +1,8 @@
 # ele_monitor
 
 Electricity consumption monitor. Reads pulses from an energy meter LED,
-calculates power in real time, and displays current consumption and price
-on an LCD.
+calculates power in real time, and displays current consumption, price,
+and accumulated daily electricity cost on an LCD.
 
 ## System overview
 
