@@ -110,7 +110,7 @@ void loop() {
       lcd.print("Hinta nyt:  ");
       lcd.print(current_price);
       char line2[17];
-      snprintf(line2, sizeof(line2), "Avg:%.2f P:%.2fe", avg_power, daily_cost);
+      snprintf(line2, sizeof(line2), "kW:%.2f P:%.2fe", avg_power, daily_cost);
       int len = strlen(line2);
       while (len < 16) line2[len++] = ' ';
       line2[16] = '\0';

@@ -69,7 +69,7 @@ journalctl -u ele_monitor2 -f   # Flask web app
 
 **`pulse_sensor/read_energy.py`** — Python systemd service. Reads the XIAO serial output and appends timestamped lines to `pulse_sensor/energy_log.txt`. Format: `YYYY-MM-DD HH:MM:SS;peakLDR;pulses;avgPower;instantPower`.
 
-**`ele_monitor2.ino`** — runs on MKR WiFi 1010. Polls `GET /api` over WiFi every 10 seconds and renders the response on a 16×2 LCD. LCD row 0: current price ("Hinta nyt: X.XX"). LCD row 1: 10-second average power and accumulated daily cost in euros ("Avg:X.XX P:X.XXe"). Drives LEDs on GPIO 3/4/5 for price tier (green/yellow/red). Supports ArduinoOTA for wireless firmware updates.
+**`ele_monitor2.ino`** — runs on MKR WiFi 1010. Polls `GET /api` over WiFi every 10 seconds and renders the response on a 16×2 LCD. LCD row 0: current price ("Hinta nyt: X.XX"). LCD row 1: 10-second average power and accumulated daily cost in euros ("kW:X.XX P:X.XXe"). Drives LEDs on GPIO 3/4/5 for price tier (green/yellow/red). Supports ArduinoOTA for wireless firmware updates.
 
 ### Flask API (`web_app/`)
 
