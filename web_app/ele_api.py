@@ -119,13 +119,12 @@ def api_endpoint():
         # Get the current datetime in the same timezone
         current_datetime = datetime.now(target_datetime.tzinfo)
 
-        # Check if the current datetime is in the same 15min as the target datetime
+        # Check if the current datetime falls in the same hour as this price slot
         is_same_hour = (
             current_datetime.year == target_datetime.year and
             current_datetime.month == target_datetime.month and
             current_datetime.day == target_datetime.day and
-            current_datetime.hour == target_datetime.hour and
-            (current_datetime.minute // 15) == (target_datetime.minute // 15)
+            current_datetime.hour == target_datetime.hour
         )
         price_to_send = 999
         if is_same_hour:
@@ -147,6 +146,8 @@ def api_endpoint():
         r_led = 1
     
     latest_power_data = energy_log_reader.get_latest_data()
+    power = round(latest_power_data[2], 2) if latest_power_data else 0.0
+    avg_power = round(latest_power_data[1], 2) if latest_power_data else 0.0
 
     response = {
         "current_time": target_datetime_str,
@@ -154,8 +155,8 @@ def api_endpoint():
         "green_led": g_led,
         "yellow_led": y_led,
         "red_led": r_led,
-        "power": round(latest_power_data[2], 2),
-        "avg_power": round(latest_power_data[1], 2),
+        "power": power,
+        "avg_power": avg_power,
         "daily_cost": calculate_daily_cost(price_dict),
     }
 
