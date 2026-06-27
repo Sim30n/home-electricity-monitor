@@ -7,9 +7,17 @@ PULSE_FQBN="Seeeduino:samd:seeed_XIAO_m0"
 PULSE_SKETCH="$SCRIPT_DIR/pulse_sensor/pulse_sensor"
 
 ELE_FQBN="arduino:samd:mkrwifi1010"
-ELE_IP="192.168.50.131"
-ELE_OTA_PASSWORD="password"
 ELE_SKETCH="$SCRIPT_DIR"
+
+# Load ELE_IP and ELE_OTA_PASSWORD from build_secrets.sh (not committed).
+# Copy build_secrets.example.sh to build_secrets.sh and fill in your values.
+BUILD_SECRETS="$SCRIPT_DIR/build_secrets.sh"
+if [ -f "$BUILD_SECRETS" ]; then
+  # shellcheck source=/dev/null
+  source "$BUILD_SECRETS"
+fi
+: "${ELE_IP:?build_secrets.sh must set ELE_IP (MKR WiFi 1010 address)}"
+: "${ELE_OTA_PASSWORD:?build_secrets.sh must set ELE_OTA_PASSWORD}"
 
 SERVICE_NAME="ele_monitor2"
 READ_ENERGY_SERVICE="read_energy"

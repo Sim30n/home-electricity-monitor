@@ -71,7 +71,7 @@ void setup() {
   connectWifi();
 
   // start the WiFi OTA library with internal (flash) based storage
-  ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
+  ArduinoOTA.begin(WiFi.localIP(), "Arduino", SECRET_OTA_PASS, InternalStorage);
 
   // you're connected now, so print out the status:
   printWifiStatus();
@@ -132,7 +132,7 @@ void loop() {
         lcd.setCursor(0, 0);
         lcd.print("WiFi katkennut  ");
         connectWifi();
-        ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
+        ArduinoOTA.begin(WiFi.localIP(), "Arduino", SECRET_OTA_PASS, InternalStorage);
       }
     }
     interval = interval + 10000;

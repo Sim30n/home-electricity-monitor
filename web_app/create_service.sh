@@ -2,7 +2,7 @@
 
 SERVICE_NAME="ele_monitor2"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME.service"
-WORK_DIR="/home/pi/projects/ele_monitor2/web_app"
+WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_EXE="$WORK_DIR/venv/bin/python3"
 APP_PATH="$WORK_DIR/ele_api.py"
 
@@ -14,7 +14,7 @@ Description=Ele Monitor 2 Web App Service
 After=network.target
 
 [Service]
-User=pi
+User=$(whoami)
 WorkingDirectory=$WORK_DIR
 ExecStart=$PYTHON_EXE $APP_PATH
 Restart=always
