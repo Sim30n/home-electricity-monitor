@@ -126,9 +126,9 @@ void loop() {
       lcd.print("   ");
       Serial.print("HTTP error: ");
       Serial.println(statusCode);
+      http_client.stop();
       if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi lost, reconnecting...");
-        http_client.stop();
         lcd.setCursor(0, 0);
         lcd.print("WiFi katkennut  ");
         connectWifi();
