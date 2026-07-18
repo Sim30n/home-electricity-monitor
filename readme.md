@@ -91,7 +91,7 @@ journalctl -u ele_monitor2 -f
 
 ```bash
 arduino-cli compile --fqbn arduino:samd:mkrwifi1010 .
-arduino-cli upload -p 192.168.50.131 --fqbn arduino:samd:mkrwifi1010 .
+arduino-cli upload -p <device-ip> --fqbn arduino:samd:mkrwifi1010 .
 ```
 
 ### Pulse sensor (Seeeduino XIAO)

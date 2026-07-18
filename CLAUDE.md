@@ -33,7 +33,7 @@ This compiles and uploads the pulse sensor firmware (XIAO via USB), stops/restar
 ```bash
 # MKR WiFi 1010 (display board)
 arduino-cli compile --fqbn arduino:samd:mkrwifi1010 .
-arduino-cli upload -p 192.168.50.131 --fqbn arduino:samd:mkrwifi1010 .
+arduino-cli upload -p <device-ip> --fqbn arduino:samd:mkrwifi1010 .
 
 # Seeeduino XIAO (pulse sensor)
 arduino-cli compile --fqbn Seeeduino:samd:seeed_XIAO_m0 pulse_sensor/pulse_sensor
