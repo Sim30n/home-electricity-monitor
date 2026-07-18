@@ -4,5 +4,3 @@ __pycache__/
 .env
 arduino_secrets.h
 build_secrets.sh
-pulse_sensor/energy_log.txt
-web_app/price_info.py
