@@ -1,0 +1,64 @@
+# Deploys ele_monitor whenever a PR is merged to master (any push to master).
+#
+# Runs on the self-hosted runner installed on the machine that runs the app.
+# The job updates the live clone of this repo to the latest master and then
+# runs ./build.sh there, which:
+#   - compiles + uploads the pulse sensor firmware over USB
+#   - compiles + uploads the display firmware over WiFi OTA
+#   - restarts the read_energy and ele_monitor2 systemd services
+#
+# One-time runner setup (on the app machine):
+#   1. Install a GitHub Actions self-hosted runner for this repository:
+#      repo Settings → Actions → Runners → New self-hosted runner,
+#      and run it as a service so it survives reboots (./svc.sh install).
+#   2. The runner user must be able to run the deploy:
+#      - passwordless sudo for systemctl (build.sh stops/restarts services),
+#        e.g. /etc/sudoers.d/ele_monitor:
+#          <runner-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl
+#      - membership in the dialout group (USB upload to the XIAO)
+#      - arduino-cli with the arduino:samd and Seeeduino:samd cores installed
+#   3. The live clone (the one the systemd services run from) must contain
+#      build_secrets.sh (ELE_IP, ELE_OTA_PASSWORD) — it is not committed.
+#   4. Set the APP_DIR repository variable (Settings → Secrets and variables →
+#      Actions → Variables) to the absolute path of the live clone.
+#      If unset, ~/ele_monitor of the runner user is assumed.
+
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+# Never run two deploys at once (they'd fight over the serial port and
+# services); queue the newest push instead of cancelling a flash mid-air.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 30
+    env:
+      APP_DIR: ${{ vars.APP_DIR }}
+    steps:
+      - name: Update live clone to latest master
+        run: |
+          APP_DIR="${APP_DIR:-$HOME/ele_monitor}"
+          echo "APP_DIR=$APP_DIR" >> "$GITHUB_ENV"
+          [ -d "$APP_DIR/.git" ] || { echo "::error::No git clone at $APP_DIR — set the APP_DIR repository variable to the live clone path"; exit 1; }
+          [ -f "$APP_DIR/build_secrets.sh" ] || { echo "::error::$APP_DIR/build_secrets.sh missing — create it from build_secrets.example.sh"; exit 1; }
+          git -C "$APP_DIR" fetch origin master
+          git -C "$APP_DIR" checkout master
+          git -C "$APP_DIR" reset --hard origin/master
+
+      - name: Update web app dependencies
+        run: |
+          if [ -x "$APP_DIR/web_app/venv/bin/pip" ]; then
+            "$APP_DIR/web_app/venv/bin/pip" install -q -r "$APP_DIR/web_app/requirements.txt"
+          fi
+
+      - name: Run build script
+        run: |
+          cd "$APP_DIR"
+          ./build.sh
