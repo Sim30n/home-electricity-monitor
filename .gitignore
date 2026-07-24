@@ -3,4 +3,4 @@ venv/
 __pycache__/
 .env
 arduino_secrets.h
-build_secrets.sh
+build_secrets.sh.last_deploy

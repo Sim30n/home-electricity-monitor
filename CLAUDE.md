@@ -59,6 +59,7 @@ venv/bin/python ensto_e.py
 ```bash
 journalctl -u read_energy -f    # serial logger (pulse sensor → energy_log.txt)
 journalctl -u ele_monitor2 -f   # Flask web app
+journalctl -u ele_deploy -f     # pull-based auto deploy
 ```
 
 ## Architecture details
@@ -87,9 +88,10 @@ Price tiers (cents/kWh): green < 2, yellow 2–10, red ≥ 10.
 
 ### Systemd services
 
-Both services are installed by their respective `create_service.sh` scripts:
+The services are installed by their respective `create_service.sh` scripts:
 - `read_energy` — serial logger, restarts every 5 seconds on failure
 - `ele_monitor2` — Flask app, always restarts
+- `ele_deploy` — pull-based auto deploy; a systemd timer polls `origin/master` every 2 minutes and, on a new commit, updates the clone and runs `build.sh` (`deploy/auto_deploy.sh`). Pull-based on purpose: the repo is public, so a GitHub Actions self-hosted runner on this machine would let fork PRs attempt code execution here. Live data files (`energy_log.txt`, `price_info.py`) are preserved across the deploy's `git reset --hard`; the last deployed commit is recorded in `.last_deploy` (gitignored).
 
 The `read_energy` service must be stopped before uploading pulse sensor firmware (it holds the serial port). `build.sh` handles this automatically.
 
@@ -102,5 +104,5 @@ The `read_energy` service must be stopped before uploading pulse sensor firmware
 1. Create `arduino_secrets.h` from `arduino_secrets.example.h`
 2. Install arduino-cli and cores: `arduino:samd` (MKR WiFi 1010) and `Seeeduino:samd` (XIAO — see `pulse_sensor/README.md`)
 3. Set up Flask: `cd web_app && python3 -m venv venv && venv/bin/pip install -r requirements.txt && cp .env.example .env` (add ENTSO-E token)
-4. Install systemd services: `cd web_app && ./create_service.sh` and `cd pulse_sensor && ./create_service.sh`
+4. Install systemd services: `cd web_app && ./create_service.sh`, `cd pulse_sensor && ./create_service.sh`, and `cd deploy && ./create_service.sh` (auto deploy on new master commits)
 5. Add daily cron job: `0 0 * * * <path>/web_app/venv/bin/python <path>/web_app/ensto_e.py`
