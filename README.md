@@ -1,5 +1,3 @@
-# ele_monitor
-
 IoT electricity consumption monitor that reads pulses from an energy meter's LED indicator,
 calculates real-time power consumption, correlates it with Finnish electricity spot prices
 from ENTSO-E, and displays the result on an LCD.
