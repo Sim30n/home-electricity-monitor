@@ -104,11 +104,22 @@ def api_endpoint():
     # Construct the file path
     file_path = os.path.join(os.path.dirname(__file__), "price_info.py")
 
-    with open(file_path, 'r') as file:
-        file_content = file.read()
+    # Defaults used when price_info.py is missing/empty/corrupted, or when
+    # none of its entries match the current 15-minute window. 999 falls into
+    # the "red" tier below so a stale/broken price feed fails loud rather
+    # than crashing the endpoint (and getting the display stuck on HTTP 500).
+    price_to_send = 999
+    target_datetime_str = None
+    price_dict = {}
 
-    # Convert the string content to a dictionary
-    price_dict = ast.literal_eval(file_content)
+    try:
+        with open(file_path, 'r') as file:
+            file_content = file.read()
+        price_dict = ast.literal_eval(file_content)
+    except (OSError, ValueError, SyntaxError) as e:
+        print(f"Error reading price_info.py: {e}")
+        price_dict = {}
+
     for key, value in price_dict.items():
         # Target ISO 8601 datetime string
         target_datetime_str = key
@@ -127,11 +138,11 @@ def api_endpoint():
             current_datetime.hour == target_datetime.hour and
             (current_datetime.minute // 15) == (target_datetime.minute // 15)
         )
-        price_to_send = 999
         if is_same_hour:
             price_to_send = (value + PRICE_MARKUP_CENTS) * (1 + PRICE_TAX_RATE)
             break
             #print(key, value)
+        price_to_send = 999
 
     if price_to_send < 2:
         g_led = 1
@@ -147,6 +158,10 @@ def api_endpoint():
         r_led = 1
     
     latest_power_data = energy_log_reader.get_latest_data()
+    if latest_power_data is None:
+        # energy_log.txt is missing/empty/unreadable (e.g. read_energy
+        # service not running yet) - fall back to zeros instead of crashing.
+        latest_power_data = (None, 0.0, 0.0)
 
     response = {
         "current_time": target_datetime_str,

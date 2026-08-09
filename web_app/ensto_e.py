@@ -115,8 +115,12 @@ if __name__ == "__main__":
     # Construct the file path
     file_path = os.path.join(os.path.dirname(__file__), "price_info.py")
 
-    # Write the content to the file
-    with open(file_path, "w") as file:
+    # Write to a temp file and atomically rename it into place so ele_api.py
+    # never reads a partially-written price_info.py (os.replace is atomic
+    # on POSIX, unlike writing file_path directly).
+    tmp_path = file_path + ".tmp"
+    with open(tmp_path, "w") as file:
         file.write(str(dict_format))
+    os.replace(tmp_path, file_path)
 
     #print(json_format)
