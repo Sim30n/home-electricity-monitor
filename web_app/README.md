@@ -11,7 +11,9 @@ board over WiFi.
 | `ele_api.py` | Flask API endpoint (`GET /api`) |
 | `ensto_e.py` | Fetches spot prices from ENTSO-E |
 | `price_info.py` | Cached price data (updated daily by cron) |
+| `price_store.py` | Keeps all fetched prices in `price_history.json` for the weekly view |
 | `read_energy_log.py` | Parses `energy_log.txt` from the pulse sensor |
+| `templates/dashboard.html` | Mobile friendly dashboard page |
 | `create_service.sh` | Installs the Flask app as a systemd service |
 
 ## Setup
@@ -76,6 +78,28 @@ journalctl -u ele_monitor2 -f
 | `power` | Instantaneous power in kW (not shown on LCD) |
 | `avg_power` | 10-second average power in kW |
 | `daily_cost` | Accumulated electricity cost in euros since midnight today |
+
+## Dashboard
+
+**`GET /`** (also **`/dashboard`**) — mobile friendly page for a phone or
+browser, e.g. `http://<server-ip>:5000/`. It shows:
+
+- current spot price (with tier colour), average and instant power
+- energy used and cost so far today
+- energy, cost and average price paid for each of the past 7 days, with totals
+
+The page refreshes itself every 10 seconds. It uses no external libraries.
+
+**`GET /api/summary`** — the same data as JSON.
+
+Daily energy is the sum of the logged pulse counts (1000 pulses = 1 kWh), and
+each log line is priced with the spot price (plus markup and VAT) of the
+15-minute or hourly slot it falls in.
+
+`price_info.py` only holds the latest day, so every price seen is also kept in
+`price_history.json` (not committed). Past days without stored prices are
+fetched from ENTSO-E once per service start when `SECURITY_TOKEN` is set;
+consumption without a price is shown separately and left out of the costs.
 
 ## Price data — daily cron job
 

@@ -4,3 +4,4 @@ __pycache__/
 .env
 arduino_secrets.h
 build_secrets.sh
+web_app/price_history.json
