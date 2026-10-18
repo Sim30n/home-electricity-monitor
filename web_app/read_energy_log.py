@@ -54,6 +54,56 @@ class EnergyLogReader:
             print(f"Error reading today's data: {e}")
         return entries
 
+    def get_data_since(self, since_dt, block_size=64 * 1024):
+        """Returns entries logged at or after since_dt, oldest first.
+
+        Reads the file backwards in blocks so only the tail needed for the
+        requested period is parsed. Each entry has 'datetime' (datetime),
+        'pulses' (int, pulses in that log interval), 'power_kw' (float) and
+        'instant_power_kw' (float, or None for old log lines).
+        """
+        entries = []
+        try:
+            with open(self.filepath, 'rb') as f:
+                f.seek(0, 2)
+                position = f.tell()
+                remainder = b''
+                done = False
+                while position > 0 and not done:
+                    read_size = min(block_size, position)
+                    position -= read_size
+                    f.seek(position)
+                    lines = (f.read(read_size) + remainder).split(b'\n')
+                    # The first line may be cut in the middle; keep it for the next block
+                    remainder = lines.pop(0) if position > 0 else b''
+                    for raw in reversed(lines):
+                        entry = self._parse_line(raw)
+                        if entry is None:
+                            continue
+                        if entry['datetime'] < since_dt:
+                            done = True
+                            break
+                        entries.append(entry)
+        except Exception as e:
+            print(f"Error reading log data: {e}")
+        entries.reverse()
+        return entries
+
+    @staticmethod
+    def _parse_line(raw):
+        parts = raw.decode('utf-8', errors='replace').strip().split(';')
+        if len(parts) < 4:
+            return None
+        try:
+            return {
+                'datetime': datetime.fromisoformat(parts[0]),
+                'pulses': int(parts[2]),
+                'power_kw': float(parts[3]),
+                'instant_power_kw': float(parts[4]) if len(parts) > 4 else None,
+            }
+        except ValueError:
+            return None  # header or corrupted line
+
     def get_all_data(self):
         """Returns list of dictionaries with all log entries."""
         try:

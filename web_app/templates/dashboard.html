@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>Electricity Monitor</title>
+<style>
+  :root {
+    --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --muted: #64748b;
+    --border: #e2e8f0; --accent: #2563eb; --on-accent: #ffffff; --bar-bg: #e2e8f0;
+    --green: #16a34a; --yellow: #ca8a04; --red: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8;
+      --border: #334155; --accent: #60a5fa; --on-accent: #0f172a; --bar-bg: #334155;
+      --green: #4ade80; --yellow: #facc15; --red: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 0.85rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-top: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (min-width: 560px) { .grid.four { grid-template-columns: repeat(4, 1fr); } }
+  .stat .label { color: var(--muted); font-size: 0.8rem; }
+  .stat .value { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .unit { font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+  .price { display: flex; align-items: center; gap: 12px; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.green { background: var(--green); } .dot.yellow { background: var(--yellow); } .dot.red { background: var(--red); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tabs button {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text); font: inherit; cursor: pointer;
+  }
+  .tabs button.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .bars { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: 84px 1fr 72px; align-items: center; gap: 8px; font-size: 0.9rem; }
+  .bar-track { background: var(--bar-bg); border-radius: 6px; height: 20px; overflow: hidden; }
+  .bar-fill { background: var(--accent); height: 100%; border-radius: 6px; transition: width .3s; }
+  .bar-row .day { white-space: nowrap; }
+  .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar-row.today .day { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 4px; text-align: right; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+  tfoot td { font-weight: 600; border-bottom: none; }
+  .table-wrap { overflow-x: auto; }
+  .note { margin-top: 8px; }
+  .error { color: var(--red); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Electricity Monitor</h1>
+      <div class="muted">Measured <span id="measured-at">–</span></div>
+    </div>
+    <div class="muted" id="status"></div>
+  </header>
+
+  <section class="card">
+    <h2>Now</h2>
+    <div class="grid four">
+      <div class="stat">
+        <div class="label">Price</div>
+        <div class="price">
+          <span class="dot" id="tier-dot"></span>
+          <span class="value"><span id="price">–</span> <span class="unit">c/kWh</span></span>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="label">Power (avg)</div>
+        <div class="value"><span id="avg-power">–</span> <span class="unit">kW</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Energy today</div>
+        <div class="value"><span id="today-kwh">–</span> <span class="unit">kWh</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Cost today</div>
+        <div class="value"><span id="today-cost">–</span> <span class="unit">€</span></div>
+      </div>
+    </div>
+    <div class="muted note">Instant power <span id="power">–</span> kW · prices include markup and VAT</div>
+  </section>
+
+  <section class="card">
+    <h2>Past 7 days</h2>
+    <div class="grid four">
+      <div class="stat">
+        <div class="label">Total energy</div>
+        <div class="value"><span id="week-kwh">–</span> <span class="unit">kWh</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Total cost</div>
+        <div class="value"><span id="week-cost">–</span> <span class="unit">€</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Avg per day</div>
+        <div class="value"><span id="week-avg-cost">–</span> <span class="unit">€</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Avg price paid</div>
+        <div class="value"><span id="week-avg-price">–</span> <span class="unit">c/kWh</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button type="button" data-metric="cost_eur" class="active">Cost (€)</button>
+      <button type="button" data-metric="energy_kwh">Energy (kWh)</button>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section class="card">
+    <h2>Daily breakdown</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Day</th><th>kWh</th><th>€</th><th>c/kWh</th><th>Peak kW</th></tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+        <tfoot>
+          <tr><td>Total</td><td id="foot-kwh"></td><td id="foot-cost"></td><td id="foot-price"></td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="muted note" id="unpriced-note" hidden></div>
+  </section>
+</main>
+
+<script>
+  const REFRESH_MS = 10000;
+  const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  let summary = {{ summary | tojson }};
+  let metric = "cost_eur";
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v, digits) => (v === null || v === undefined) ? "–" : Number(v).toFixed(digits);
+
+  function dayLabel(iso, isToday) {
+    if (isToday) return "Today";
+    const [y, m, d] = iso.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    return WEEKDAYS[date.getDay()] + " " + d + "." + m + ".";
+  }
+
+  function renderBars() {
+    const daily = summary.daily;
+    const max = Math.max(...daily.map((d) => d[metric]), 0);
+    const digits = metric === "cost_eur" ? 2 : 1;
+    const unit = metric === "cost_eur" ? " €" : " kWh";
+    const bars = $("bars");
+    bars.replaceChildren(...daily.map((d, i) => {
+      const isToday = i === daily.length - 1;
+      const row = document.createElement("div");
+      row.className = "bar-row" + (isToday ? " today" : "");
+      const day = document.createElement("span");
+      day.className = "day";
+      day.textContent = dayLabel(d.date, isToday);
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill";
+      fill.style.width = (max > 0 ? (d[metric] / max) * 100 : 0) + "%";
+      track.appendChild(fill);
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = d.has_data ? fmt(d[metric], digits) + unit : "–";
+      row.append(day, track, num);
+      return row;
+    }));
+  }
+
+  function renderTable() {
+    const daily = summary.daily;
+    $("table-body").replaceChildren(...daily.slice().reverse().map((d, i) => {
+      const tr = document.createElement("tr");
+      const cells = d.has_data
+        ? [fmt(d.energy_kwh, 2), fmt(d.cost_eur, 2), fmt(d.avg_price, 2), fmt(d.peak_kw, 2)]
+        : ["–", "–", "–", "–"];
+      [dayLabel(d.date, i === 0), ...cells].forEach((text) => {
+        const td = document.createElement("td");
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      return tr;
+    }));
+    const w = summary.week;
+    $("foot-kwh").textContent = fmt(w.energy_kwh, 2);
+    $("foot-cost").textContent = fmt(w.cost_eur, 2);
+    $("foot-price").textContent = fmt(w.avg_price, 2);
+    const note = $("unpriced-note");
+    note.hidden = !(w.unpriced_kwh > 0);
+    note.textContent = "No price data for " + fmt(w.unpriced_kwh, 2) +
+      " kWh of the consumption; it is not included in the costs.";
+  }
+
+  function render() {
+    const c = summary.current, t = summary.today, w = summary.week;
+    $("price").textContent = fmt(c.price, 2);
+    $("tier-dot").className = "dot" + (c.tier ? " " + c.tier : "");
+    $("avg-power").textContent = fmt(c.avg_power, 2);
+    $("power").textContent = fmt(c.power, 2);
+    $("measured-at").textContent = c.measured_at || "–";
+    $("today-kwh").textContent = fmt(t.energy_kwh, 2);
+    $("today-cost").textContent = fmt(t.cost_eur, 2);
+    $("week-kwh").textContent = fmt(w.energy_kwh, 1);
+    $("week-cost").textContent = fmt(w.cost_eur, 2);
+    $("week-avg-cost").textContent = fmt(w.avg_daily_cost_eur, 2);
+    $("week-avg-price").textContent = fmt(w.avg_price, 2);
+    renderBars();
+    renderTable();
+  }
+
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      metric = btn.dataset.metric;
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+      renderBars();
+    });
+  });
+
+  async function refresh() {
+    try {
+      const res = await fetch("{{ url_for('summary_endpoint') }}", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      summary = await res.json();
+      render();
+      $("status").textContent = "";
+      $("status").classList.remove("error");
+    } catch (e) {
+      $("status").textContent = "Update failed (" + e.message + ")";
+      $("status").classList.add("error");
+    }
+  }
+
+  render();
+  setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

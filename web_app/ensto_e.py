@@ -13,11 +13,13 @@ class ElePrice:
     def __init__(self):
         pass
 
-    def get_price_info(self):
+    def get_price_info(self, period_start=None, period_end=None):
 
-        # Define your datetime objects
-        period_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        period_end = period_start + timedelta(hours=24)  # 24 hours forward
+        # Default period: today, 24 hours forward
+        if period_start is None:
+            period_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        if period_end is None:
+            period_end = period_start + timedelta(hours=24)
 
         security_token = os.getenv('SECURITY_TOKEN')
 
@@ -37,7 +39,7 @@ class ElePrice:
         )
         payload = {}
         headers = {}
-        response = requests.request("GET", url, headers=headers, data=payload)
+        response = requests.request("GET", url, headers=headers, data=payload, timeout=30)
         return response
 
     def parse_duration(self, duration):
@@ -118,5 +120,9 @@ if __name__ == "__main__":
     # Write the content to the file
     with open(file_path, "w") as file:
         file.write(str(dict_format))
+
+    # Keep a history of all prices for the weekly cost analysis
+    from price_store import merge_into_history
+    merge_into_history(dict_format)
 
     #print(json_format)

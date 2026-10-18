@@ -1,7 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from ensto_e import ElePrice
 from read_energy_log import EnergyLogReader
-from datetime import datetime
+from price_store import get_price_lookup
+from datetime import datetime, timedelta
 import ast
 import os
 
@@ -94,6 +95,101 @@ def calculate_daily_cost(price_dict):
 
     return round(total_cost_cents / 100.0, 2)
 
+PULSES_PER_KWH = 1000
+SUMMARY_DAYS = 7
+
+
+def price_with_markup(spot_price):
+    """Spot price (c/kWh) -> consumer price with markup and VAT (c/kWh)."""
+    return (spot_price + PRICE_MARKUP_CENTS) * (1 + PRICE_TAX_RATE)
+
+
+def price_tier(price):
+    if price is None:
+        return None
+    if price < 2:
+        return "green"
+    if price < 10:
+        return "yellow"
+    return "red"
+
+
+def build_summary(now=None):
+    """Current usage and price, plus daily energy and cost for the past week.
+
+    Energy comes from the pulse count of each log line (1000 pulses = 1 kWh)
+    and each line is priced with the spot price of the slot it was logged in.
+    """
+    now = now or datetime.now()
+    today = now.date()
+    days = [today - timedelta(days=i) for i in range(SUMMARY_DAYS - 1, -1, -1)]
+    lookup = get_price_lookup(days)
+
+    stats = {day: {"energy_kwh": 0.0, "cost_cents": 0.0, "unpriced_kwh": 0.0,
+                   "peak_kw": 0.0, "entries": 0} for day in days}
+    entries = energy_log_reader.get_data_since(datetime.combine(days[0], datetime.min.time()))
+    for entry in entries:
+        day_stats = stats.get(entry['datetime'].date())
+        if day_stats is None:
+            continue
+        kwh = entry['pulses'] / PULSES_PER_KWH
+        day_stats["energy_kwh"] += kwh
+        day_stats["entries"] += 1
+        day_stats["peak_kw"] = max(day_stats["peak_kw"], entry['power_kw'])
+        spot = lookup(entry['datetime'])
+        if spot is None:
+            day_stats["unpriced_kwh"] += kwh
+        else:
+            day_stats["cost_cents"] += kwh * price_with_markup(spot)
+
+    daily = []
+    for day in days:
+        d = stats[day]
+        priced_kwh = d["energy_kwh"] - d["unpriced_kwh"]
+        daily.append({
+            "date": day.isoformat(),
+            "energy_kwh": round(d["energy_kwh"], 3),
+            "cost_eur": round(d["cost_cents"] / 100.0, 2),
+            "avg_price": round(d["cost_cents"] / priced_kwh, 2) if priced_kwh > 0 else None,
+            "unpriced_kwh": round(d["unpriced_kwh"], 3),
+            "peak_kw": round(d["peak_kw"], 2),
+            "has_data": d["entries"] > 0,
+        })
+
+    total_kwh = sum(d["energy_kwh"] for d in stats.values())
+    total_cents = sum(d["cost_cents"] for d in stats.values())
+    total_unpriced = sum(d["unpriced_kwh"] for d in stats.values())
+    days_with_data = sum(1 for d in daily if d["has_data"])
+    days_priced = sum(1 for d in stats.values() if d["energy_kwh"] > d["unpriced_kwh"])
+
+    spot_now = lookup(now)
+    current_price = round(price_with_markup(spot_now), 2) if spot_now is not None else None
+    latest = entries[-1] if entries else None
+
+    return {
+        "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "current": {
+            "price": current_price,
+            "tier": price_tier(current_price),
+            "avg_power": round(latest['power_kw'], 2) if latest else None,
+            "power": round(latest['instant_power_kw'], 2)
+                     if latest and latest['instant_power_kw'] is not None else None,
+            "measured_at": latest['datetime'].strftime("%Y-%m-%d %H:%M:%S") if latest else None,
+        },
+        "today": daily[-1],
+        "daily": daily,
+        "week": {
+            "energy_kwh": round(total_kwh, 3),
+            "cost_eur": round(total_cents / 100.0, 2),
+            "avg_price": round(total_cents / (total_kwh - total_unpriced), 2)
+                         if total_kwh - total_unpriced > 0 else None,
+            "unpriced_kwh": round(total_unpriced, 3),
+            "avg_daily_kwh": round(total_kwh / days_with_data, 3) if days_with_data else None,
+            "avg_daily_cost_eur": round(total_cents / 100.0 / days_priced, 2) if days_priced else None,
+        },
+    }
+
+
 # Initialize the Flask application
 app = Flask(__name__)
 
@@ -170,6 +266,19 @@ def api_endpoint():
     #    "data": None
     #}
     return jsonify(response)
+
+
+@app.route('/api/summary', methods=['GET'])
+def summary_endpoint():
+    """Current usage and price plus a daily breakdown of the past week."""
+    return jsonify(build_summary())
+
+
+@app.route('/', methods=['GET'])
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    """Mobile friendly page showing the data from /api/summary."""
+    return render_template('dashboard.html', summary=build_summary())
 
 
 # Run the application
