@@ -58,6 +58,8 @@
   .table-wrap { overflow-x: auto; }
   .note { margin-top: 8px; }
   .error { color: var(--red); }
+  .toggle { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  .toggle input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 </style>
 </head>
 <body>
@@ -69,6 +71,20 @@
     </div>
     <div class="muted" id="status"></div>
   </header>
+
+  <section class="card">
+    <label class="toggle">
+      <input type="checkbox" id="include-fees">
+      <span>
+        Include transfer and network fees
+        <span class="muted" style="display:block">
+          Transfer <span id="fee-night"></span> c/kWh at night (22–07), <span id="fee-day"></span> c/kWh
+          during the day · network fee <span id="fee-network"></span> c/kWh ·
+          basic fee <span id="fee-basic"></span> €/month (month total only)
+        </span>
+      </span>
+    </label>
+  </section>
 
   <section class="card">
     <h2>Now</h2>
@@ -172,10 +188,21 @@
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
                   "August", "September", "October", "November", "December"];
   let summary = {{ summary | tojson }};
+  const FEES = {{ fees | tojson }};
+  const FEES_KEY = "includeFees";
   let metric = "cost_eur";
+  let withFees = false;
+  try { withFees = localStorage.getItem(FEES_KEY) === "1"; } catch (e) {}
 
   const $ = (id) => document.getElementById(id);
   const fmt = (v, digits) => (v === null || v === undefined) ? "–" : Number(v).toFixed(digits);
+
+  // Cost figures with transfer and network fees added when the checkbox is on
+  const cost = (o) => o.cost_eur + (withFees ? o.fees_eur : 0);
+  const avgPrice = (o) => (o.avg_price === null) ? null : o.avg_price + (withFees ? o.avg_fees : 0);
+  const avgDailyCost = (o) => (o.avg_daily_cost_eur === null) ? null
+    : o.avg_daily_cost_eur + (withFees ? o.avg_daily_fees_eur : 0);
+  const barValue = (d) => metric === "cost_eur" ? cost(d) : d.energy_kwh;
 
   function dayLabel(iso, isToday) {
     if (isToday) return "Today";
@@ -186,7 +213,7 @@
 
   function renderBars() {
     const daily = summary.daily;
-    const max = Math.max(...daily.map((d) => d[metric]), 0);
+    const max = Math.max(...daily.map(barValue), 0);
     const digits = metric === "cost_eur" ? 2 : 1;
     const unit = metric === "cost_eur" ? " €" : " kWh";
     const bars = $("bars");
@@ -201,11 +228,11 @@
       track.className = "bar-track";
       const fill = document.createElement("div");
       fill.className = "bar-fill";
-      fill.style.width = (max > 0 ? (d[metric] / max) * 100 : 0) + "%";
+      fill.style.width = (max > 0 ? (barValue(d) / max) * 100 : 0) + "%";
       track.appendChild(fill);
       const num = document.createElement("span");
       num.className = "num";
-      num.textContent = d.has_data ? fmt(d[metric], digits) + unit : "–";
+      num.textContent = d.has_data ? fmt(barValue(d), digits) + unit : "–";
       row.append(day, track, num);
       return row;
     }));
@@ -216,7 +243,7 @@
     $("table-body").replaceChildren(...daily.slice().reverse().map((d, i) => {
       const tr = document.createElement("tr");
       const cells = d.has_data
-        ? [fmt(d.energy_kwh, 2), fmt(d.cost_eur, 2), fmt(d.avg_price, 2), fmt(d.peak_kw, 2)]
+        ? [fmt(d.energy_kwh, 2), fmt(cost(d), 2), fmt(avgPrice(d), 2), fmt(d.peak_kw, 2)]
         : ["–", "–", "–", "–"];
       [dayLabel(d.date, i === 0), ...cells].forEach((text) => {
         const td = document.createElement("td");
@@ -227,12 +254,12 @@
     }));
     const w = summary.week;
     $("foot-kwh").textContent = fmt(w.energy_kwh, 2);
-    $("foot-cost").textContent = fmt(w.cost_eur, 2);
-    $("foot-price").textContent = fmt(w.avg_price, 2);
+    $("foot-cost").textContent = fmt(cost(w), 2);
+    $("foot-price").textContent = fmt(avgPrice(w), 2);
     const note = $("unpriced-note");
     note.hidden = !(w.unpriced_kwh > 0);
-    note.textContent = "No price data for " + fmt(w.unpriced_kwh, 2) +
-      " kWh of the consumption; it is not included in the costs.";
+    note.textContent = "No spot price for " + fmt(w.unpriced_kwh, 2) +
+      " kWh of the consumption; its energy cost is not included.";
   }
 
   function renderMonth() {
@@ -240,12 +267,15 @@
     const [y, mon] = m.month.split("-").map(Number);
     $("month-title").textContent = "This month · " + MONTHS[mon - 1] + " " + y;
     $("month-kwh").textContent = fmt(m.energy_kwh, 1);
-    $("month-cost").textContent = fmt(m.cost_eur, 2);
-    $("month-avg-cost").textContent = fmt(m.avg_daily_cost_eur, 2);
-    $("month-avg-price").textContent = fmt(m.avg_price, 2);
+    $("month-cost").textContent = fmt(cost(m) + (withFees ? m.basic_fee_eur : 0), 2);
+    $("month-avg-cost").textContent = fmt(avgDailyCost(m), 2);
+    $("month-avg-price").textContent = fmt(avgPrice(m), 2);
     let note = m.days_with_data + (m.days_with_data === 1 ? " day" : " days") + " of data";
+    if (withFees) {
+      note += " · total includes the " + fmt(m.basic_fee_eur, 2) + " € basic fee";
+    }
     if (m.unpriced_kwh > 0) {
-      note += " · no price data for " + fmt(m.unpriced_kwh, 2) + " kWh, not included in the cost";
+      note += " · no spot price for " + fmt(m.unpriced_kwh, 2) + " kWh, its energy cost is not included";
     }
     $("month-note").textContent = note;
   }
@@ -258,15 +288,26 @@
     $("power").textContent = fmt(c.power, 2);
     $("measured-at").textContent = c.measured_at || "–";
     $("today-kwh").textContent = fmt(t.energy_kwh, 2);
-    $("today-cost").textContent = fmt(t.cost_eur, 2);
+    $("today-cost").textContent = fmt(cost(t), 2);
     $("week-kwh").textContent = fmt(w.energy_kwh, 1);
-    $("week-cost").textContent = fmt(w.cost_eur, 2);
-    $("week-avg-cost").textContent = fmt(w.avg_daily_cost_eur, 2);
-    $("week-avg-price").textContent = fmt(w.avg_price, 2);
+    $("week-cost").textContent = fmt(cost(w), 2);
+    $("week-avg-cost").textContent = fmt(avgDailyCost(w), 2);
+    $("week-avg-price").textContent = fmt(avgPrice(w), 2);
     renderMonth();
     renderBars();
     renderTable();
   }
+
+  $("fee-night").textContent = FEES.transfer_night_cents;
+  $("fee-day").textContent = FEES.transfer_day_cents;
+  $("fee-network").textContent = FEES.network_fee_cents;
+  $("fee-basic").textContent = fmt(FEES.monthly_basic_fee_eur, 2);
+  $("include-fees").checked = withFees;
+  $("include-fees").addEventListener("change", (e) => {
+    withFees = e.target.checked;
+    try { localStorage.setItem(FEES_KEY, withFees ? "1" : "0"); } catch (err) {}
+    render();
+  });
 
   document.querySelectorAll(".tabs button").forEach((btn) => {
     btn.addEventListener("click", () => {

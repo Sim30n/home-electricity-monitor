@@ -90,6 +90,13 @@ browser, e.g. `http://<server-ip>:5000/`. It shows:
   price paid
 - energy, cost and average price paid for each of the past 7 days, with totals
 
+A checkbox at the top adds the transfer fee (5.11 c/kWh at night 22–07,
+3.12 c/kWh during the day) and the network fee (2.82752 c/kWh) to all cost
+figures, and the 38.03 € monthly basic fee to the month total only. The choice
+is remembered in the browser. The fees are set at the top of the summary code
+in `ele_api.py` (`TRANSFER_NIGHT_CENTS`, `TRANSFER_DAY_CENTS`,
+`NETWORK_FEE_CENTS`, `MONTHLY_BASIC_FEE_EUR`).
+
 The page refreshes itself every 10 seconds. It uses no external libraries.
 
 **`GET /api/summary`** — the same data as JSON.

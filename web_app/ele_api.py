@@ -98,6 +98,14 @@ def calculate_daily_cost(price_dict):
 PULSES_PER_KWH = 1000
 SUMMARY_DAYS = 7
 
+# Additional costs on the electricity bill, shown on the dashboard when enabled
+TRANSFER_NIGHT_CENTS = 5.11  # c/kWh, 22:00-07:00
+TRANSFER_DAY_CENTS = 3.12    # c/kWh, 07:00-22:00
+NETWORK_FEE_CENTS = 2.82752  # c/kWh
+MONTHLY_BASIC_FEE_EUR = 38.03
+NIGHT_START_HOUR = 22
+NIGHT_END_HOUR = 7
+
 # Stats of finished days, so their log lines are not re-read on every request
 _day_stats_cache = {}
 
@@ -105,6 +113,13 @@ _day_stats_cache = {}
 def price_with_markup(spot_price):
     """Spot price (c/kWh) -> consumer price with markup and VAT (c/kWh)."""
     return (spot_price + PRICE_MARKUP_CENTS) * (1 + PRICE_TAX_RATE)
+
+
+def fees_per_kwh(dt):
+    """Transfer and network fees (c/kWh) for energy used at local time dt."""
+    is_night = dt.hour >= NIGHT_START_HOUR or dt.hour < NIGHT_END_HOUR
+    transfer = TRANSFER_NIGHT_CENTS if is_night else TRANSFER_DAY_CENTS
+    return transfer + NETWORK_FEE_CENTS
 
 
 def price_tier(price):
@@ -130,8 +145,8 @@ def collect_day_stats(days, lookup, today):
         return stats
 
     for day in pending:
-        stats[day] = {"energy_kwh": 0.0, "cost_cents": 0.0, "unpriced_kwh": 0.0,
-                      "peak_kw": 0.0, "entries": 0, "latest": None}
+        stats[day] = {"energy_kwh": 0.0, "cost_cents": 0.0, "fees_cents": 0.0,
+                      "unpriced_kwh": 0.0, "peak_kw": 0.0, "entries": 0, "latest": None}
     pending_set = set(pending)
     entries = energy_log_reader.get_data_since(datetime.combine(pending[0], datetime.min.time()))
     for entry in entries:
@@ -144,6 +159,7 @@ def collect_day_stats(days, lookup, today):
         day_stats["entries"] += 1
         day_stats["peak_kw"] = max(day_stats["peak_kw"], entry['power_kw'])
         day_stats["latest"] = entry
+        day_stats["fees_cents"] += kwh * fees_per_kwh(entry['datetime'])
         spot = lookup(entry['datetime'])
         if spot is None:
             day_stats["unpriced_kwh"] += kwh
@@ -161,6 +177,7 @@ def summarize_period(day_stats):
     """Totals and daily averages over a list of day stats."""
     total_kwh = sum(d["energy_kwh"] for d in day_stats)
     total_cents = sum(d["cost_cents"] for d in day_stats)
+    total_fees = sum(d["fees_cents"] for d in day_stats)
     total_unpriced = sum(d["unpriced_kwh"] for d in day_stats)
     priced_kwh = total_kwh - total_unpriced
     days_with_data = sum(1 for d in day_stats if d["entries"] > 0)
@@ -173,6 +190,10 @@ def summarize_period(day_stats):
         "days_with_data": days_with_data,
         "avg_daily_kwh": round(total_kwh / days_with_data, 3) if days_with_data else None,
         "avg_daily_cost_eur": round(total_cents / 100.0 / days_priced, 2) if days_priced else None,
+        # Transfer and network fees; the dashboard adds these when enabled
+        "fees_eur": round(total_fees / 100.0, 2),
+        "avg_fees": round(total_fees / total_kwh, 2) if total_kwh > 0 else None,
+        "avg_daily_fees_eur": round(total_fees / 100.0 / days_with_data, 2) if days_with_data else None,
     }
 
 
@@ -199,12 +220,15 @@ def build_summary(now=None):
             "cost_eur": round(d["cost_cents"] / 100.0, 2),
             "avg_price": round(d["cost_cents"] / priced_kwh, 2) if priced_kwh > 0 else None,
             "unpriced_kwh": round(d["unpriced_kwh"], 3),
+            "fees_eur": round(d["fees_cents"] / 100.0, 2),
+            "avg_fees": round(d["fees_cents"] / d["energy_kwh"], 2) if d["energy_kwh"] > 0 else None,
             "peak_kw": round(d["peak_kw"], 2),
             "has_data": d["entries"] > 0,
         })
 
     month = summarize_period([stats[day] for day in days if day >= month_start])
     month["month"] = month_start.strftime("%Y-%m")
+    month["basic_fee_eur"] = MONTHLY_BASIC_FEE_EUR
 
     spot_now = lookup(now)
     current_price = round(price_with_markup(spot_now), 2) if spot_now is not None else None
@@ -315,7 +339,13 @@ def summary_endpoint():
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     """Mobile friendly page showing the data from /api/summary."""
-    return render_template('dashboard.html', summary=build_summary())
+    fees = {
+        "transfer_night_cents": TRANSFER_NIGHT_CENTS,
+        "transfer_day_cents": TRANSFER_DAY_CENTS,
+        "network_fee_cents": NETWORK_FEE_CENTS,
+        "monthly_basic_fee_eur": MONTHLY_BASIC_FEE_EUR,
+    }
+    return render_template('dashboard.html', summary=build_summary(), fees=fees)
 
 
 # Run the application
