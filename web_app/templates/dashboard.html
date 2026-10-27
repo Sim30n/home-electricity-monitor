@@ -97,6 +97,29 @@
   </section>
 
   <section class="card">
+    <h2 id="month-title">This month</h2>
+    <div class="grid four">
+      <div class="stat">
+        <div class="label">Total energy</div>
+        <div class="value"><span id="month-kwh">–</span> <span class="unit">kWh</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Total cost</div>
+        <div class="value"><span id="month-cost">–</span> <span class="unit">€</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Avg per day</div>
+        <div class="value"><span id="month-avg-cost">–</span> <span class="unit">€</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Avg price paid</div>
+        <div class="value"><span id="month-avg-price">–</span> <span class="unit">c/kWh</span></div>
+      </div>
+    </div>
+    <div class="muted note" id="month-note"></div>
+  </section>
+
+  <section class="card">
     <h2>Past 7 days</h2>
     <div class="grid four">
       <div class="stat">
@@ -146,6 +169,8 @@
 <script>
   const REFRESH_MS = 10000;
   const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+                  "August", "September", "October", "November", "December"];
   let summary = {{ summary | tojson }};
   let metric = "cost_eur";
 
@@ -210,6 +235,21 @@
       " kWh of the consumption; it is not included in the costs.";
   }
 
+  function renderMonth() {
+    const m = summary.month;
+    const [y, mon] = m.month.split("-").map(Number);
+    $("month-title").textContent = "This month · " + MONTHS[mon - 1] + " " + y;
+    $("month-kwh").textContent = fmt(m.energy_kwh, 1);
+    $("month-cost").textContent = fmt(m.cost_eur, 2);
+    $("month-avg-cost").textContent = fmt(m.avg_daily_cost_eur, 2);
+    $("month-avg-price").textContent = fmt(m.avg_price, 2);
+    let note = m.days_with_data + (m.days_with_data === 1 ? " day" : " days") + " of data";
+    if (m.unpriced_kwh > 0) {
+      note += " · no price data for " + fmt(m.unpriced_kwh, 2) + " kWh, not included in the cost";
+    }
+    $("month-note").textContent = note;
+  }
+
   function render() {
     const c = summary.current, t = summary.today, w = summary.week;
     $("price").textContent = fmt(c.price, 2);
@@ -223,6 +263,7 @@
     $("week-cost").textContent = fmt(w.cost_eur, 2);
     $("week-avg-cost").textContent = fmt(w.avg_daily_cost_eur, 2);
     $("week-avg-price").textContent = fmt(w.avg_price, 2);
+    renderMonth();
     renderBars();
     renderTable();
   }
