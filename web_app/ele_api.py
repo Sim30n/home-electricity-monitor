@@ -98,6 +98,9 @@ def calculate_daily_cost(price_dict):
 PULSES_PER_KWH = 1000
 SUMMARY_DAYS = 7
 
+# Stats of finished days, so their log lines are not re-read on every request
+_day_stats_cache = {}
+
 
 def price_with_markup(spot_price):
     """Spot price (c/kWh) -> consumer price with markup and VAT (c/kWh)."""
@@ -114,36 +117,80 @@ def price_tier(price):
     return "red"
 
 
-def build_summary(now=None):
-    """Current usage and price, plus daily energy and cost for the past week.
+def collect_day_stats(days, lookup, today):
+    """Return {date: stats} with energy, cost and peak power for each day.
 
     Energy comes from the pulse count of each log line (1000 pulses = 1 kWh)
     and each line is priced with the spot price of the slot it was logged in.
+    Days before today are cached once computed.
     """
-    now = now or datetime.now()
-    today = now.date()
-    days = [today - timedelta(days=i) for i in range(SUMMARY_DAYS - 1, -1, -1)]
-    lookup = get_price_lookup(days)
+    stats = {day: _day_stats_cache[day] for day in days if day in _day_stats_cache}
+    pending = [day for day in days if day not in stats]
+    if not pending:
+        return stats
 
-    stats = {day: {"energy_kwh": 0.0, "cost_cents": 0.0, "unpriced_kwh": 0.0,
-                   "peak_kw": 0.0, "entries": 0} for day in days}
-    entries = energy_log_reader.get_data_since(datetime.combine(days[0], datetime.min.time()))
+    for day in pending:
+        stats[day] = {"energy_kwh": 0.0, "cost_cents": 0.0, "unpriced_kwh": 0.0,
+                      "peak_kw": 0.0, "entries": 0, "latest": None}
+    pending_set = set(pending)
+    entries = energy_log_reader.get_data_since(datetime.combine(pending[0], datetime.min.time()))
     for entry in entries:
-        day_stats = stats.get(entry['datetime'].date())
-        if day_stats is None:
+        day = entry['datetime'].date()
+        if day not in pending_set:
             continue
+        day_stats = stats[day]
         kwh = entry['pulses'] / PULSES_PER_KWH
         day_stats["energy_kwh"] += kwh
         day_stats["entries"] += 1
         day_stats["peak_kw"] = max(day_stats["peak_kw"], entry['power_kw'])
+        day_stats["latest"] = entry
         spot = lookup(entry['datetime'])
         if spot is None:
             day_stats["unpriced_kwh"] += kwh
         else:
             day_stats["cost_cents"] += kwh * price_with_markup(spot)
 
+    # An empty read may be a log read error, so only cache when lines were found
+    for day in pending:
+        if day < today and entries:
+            _day_stats_cache[day] = stats[day]
+    return stats
+
+
+def summarize_period(day_stats):
+    """Totals and daily averages over a list of day stats."""
+    total_kwh = sum(d["energy_kwh"] for d in day_stats)
+    total_cents = sum(d["cost_cents"] for d in day_stats)
+    total_unpriced = sum(d["unpriced_kwh"] for d in day_stats)
+    priced_kwh = total_kwh - total_unpriced
+    days_with_data = sum(1 for d in day_stats if d["entries"] > 0)
+    days_priced = sum(1 for d in day_stats if d["energy_kwh"] > d["unpriced_kwh"])
+    return {
+        "energy_kwh": round(total_kwh, 3),
+        "cost_eur": round(total_cents / 100.0, 2),
+        "avg_price": round(total_cents / priced_kwh, 2) if priced_kwh > 0 else None,
+        "unpriced_kwh": round(total_unpriced, 3),
+        "days_with_data": days_with_data,
+        "avg_daily_kwh": round(total_kwh / days_with_data, 3) if days_with_data else None,
+        "avg_daily_cost_eur": round(total_cents / 100.0 / days_priced, 2) if days_priced else None,
+    }
+
+
+def build_summary(now=None):
+    """Current usage and price, daily energy and cost for the past week,
+    and totals for the current month."""
+    now = now or datetime.now()
+    today = now.date()
+    week_start = today - timedelta(days=SUMMARY_DAYS - 1)
+    month_start = today.replace(day=1)
+    first_day = min(week_start, month_start)
+    days = [first_day + timedelta(days=i) for i in range((today - first_day).days + 1)]
+    lookup = get_price_lookup(days)
+    stats = collect_day_stats(days, lookup, today)
+
+    week_days = [day for day in days if day >= week_start]
     daily = []
-    for day in days:
+    for day in week_days:
         d = stats[day]
         priced_kwh = d["energy_kwh"] - d["unpriced_kwh"]
         daily.append({
@@ -156,15 +203,12 @@ def build_summary(now=None):
             "has_data": d["entries"] > 0,
         })
 
-    total_kwh = sum(d["energy_kwh"] for d in stats.values())
-    total_cents = sum(d["cost_cents"] for d in stats.values())
-    total_unpriced = sum(d["unpriced_kwh"] for d in stats.values())
-    days_with_data = sum(1 for d in daily if d["has_data"])
-    days_priced = sum(1 for d in stats.values() if d["energy_kwh"] > d["unpriced_kwh"])
+    month = summarize_period([stats[day] for day in days if day >= month_start])
+    month["month"] = month_start.strftime("%Y-%m")
 
     spot_now = lookup(now)
     current_price = round(price_with_markup(spot_now), 2) if spot_now is not None else None
-    latest = entries[-1] if entries else None
+    latest = next((stats[day]["latest"] for day in reversed(week_days) if stats[day]["latest"]), None)
 
     return {
         "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -178,15 +222,8 @@ def build_summary(now=None):
         },
         "today": daily[-1],
         "daily": daily,
-        "week": {
-            "energy_kwh": round(total_kwh, 3),
-            "cost_eur": round(total_cents / 100.0, 2),
-            "avg_price": round(total_cents / (total_kwh - total_unpriced), 2)
-                         if total_kwh - total_unpriced > 0 else None,
-            "unpriced_kwh": round(total_unpriced, 3),
-            "avg_daily_kwh": round(total_kwh / days_with_data, 3) if days_with_data else None,
-            "avg_daily_cost_eur": round(total_cents / 100.0 / days_priced, 2) if days_priced else None,
-        },
+        "week": summarize_period([stats[day] for day in week_days]),
+        "month": month,
     }
 
 

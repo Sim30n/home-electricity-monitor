@@ -86,6 +86,8 @@ browser, e.g. `http://<server-ip>:5000/`. It shows:
 
 - current spot price (with tier colour), average and instant power
 - energy used and cost so far today
+- current month's total energy, total cost, average cost per day and average
+  price paid
 - energy, cost and average price paid for each of the past 7 days, with totals
 
 The page refreshes itself every 10 seconds. It uses no external libraries.
@@ -94,7 +96,8 @@ The page refreshes itself every 10 seconds. It uses no external libraries.
 
 Daily energy is the sum of the logged pulse counts (1000 pulses = 1 kWh), and
 each log line is priced with the spot price (plus markup and VAT) of the
-15-minute or hourly slot it falls in.
+15-minute or hourly slot it falls in. Results for finished days are kept in
+memory, so a month of log data is read only once per service start.
 
 `price_info.py` only holds the latest day, so every price seen is also kept in
 `price_history.json` (not committed). Past days without stored prices are
